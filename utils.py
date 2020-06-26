@@ -1,4 +1,5 @@
-from CTFd.utils import admins_only, is_admin, cache
+from flask import session
+from CTFd.utils.decorators import admins_only, is_admin, cache
 from CTFd.models import db
 from .models import Containers
 
@@ -6,6 +7,9 @@ import json
 import subprocess
 import socket
 import tempfile
+import shutil
+import re
+import random
 
 
 @cache.memoize()
@@ -20,7 +24,7 @@ def can_create_container():
 def import_image(name):
     try:
         info = json.loads(subprocess.check_output(['docker', 'inspect', '--type=image', name]))
-        container = Containers(name=name, buildfile=None)
+        container = Containers(owner=session["id"], name=name, buildfile=None)
         db.session.add(container)
         db.session.commit()
         db.session.close()
@@ -29,12 +33,12 @@ def import_image(name):
         return False
 
 
-def create_image(name, buildfile, files):
+def create_image(owner, name, buildfile, files):
     if not can_create_container():
         return False
     folder = tempfile.mkdtemp(prefix='ctfd')
     tmpfile = tempfile.NamedTemporaryFile(dir=folder, delete=False)
-    tmpfile.write(buildfile)
+    tmpfile.write(bytes(buildfile, 'utf-8'))
     tmpfile.close()
 
     for f in files:
@@ -47,7 +51,7 @@ def create_image(name, buildfile, files):
         cmd = ['docker', 'build', '-f', tmpfile.name, '-t', name, folder]
         print(cmd)
         subprocess.call(cmd)
-        container = Containers(name, buildfile)
+        container = Containers(owner, name, buildfile)
         db.session.add(container)
         db.session.commit()
         db.session.close()
@@ -88,12 +92,21 @@ def run_image(name):
         cmd = ['docker', 'run', '-d']
         ports_used = []
         for port in ports_asked:
-            if is_port_free(port):
-                cmd.append('-p')
-                cmd.append('{}:{}'.format(port, port))
-            else:
+            i = 0
+            while i < 1000:
+                arbitrary_port = 10000 + random.randint(1,50000)
+                print(arbitrary_port)
+                if is_port_free(arbitrary_port):
+                    cmd.append('-p')
+                    cmd.append('{}:{}'.format(arbitrary_port, port))
+                    break
+                else:
+                    i += 1
+            if i >= 1000:
+                print("ERROR: Failed to find free port. Clean out unused containers!")
                 cmd.append('-p')
                 ports_used.append('{}'.format(port))
+
         cmd += ['--name', name, name]
         print(cmd)
         subprocess.call(cmd)
@@ -124,6 +137,8 @@ def container_status(name):
     try:
         data = json.loads(subprocess.check_output(['docker', 'inspect', '--type=container', name]))
         status = data[0]["State"]["Status"]
+        print("STATUS:")
+        print(status)
         return status
     except subprocess.CalledProcessError:
         return 'missing'
@@ -140,6 +155,8 @@ def container_ports(name, verbose=False):
             final = []
             for port in ports.keys():
                 final.append("".join([ports[port][0]["HostPort"], '->', port]))
+            print("FINAL:")
+            print(final)
             return final
         else:
             ports = info[0]['Config']['ExposedPorts'].keys()
@@ -149,3 +166,6 @@ def container_ports(name, verbose=False):
             return ports
     except subprocess.CalledProcessError:
         return []
+
+def rmdir(directory):
+    shutil.rmtree(directory, ignore_errors=True)

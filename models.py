@@ -3,10 +3,12 @@ from CTFd.models import db
 
 class Containers(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    owner = db.Column(db.Integer)
     name = db.Column(db.String(80))
     buildfile = db.Column(db.Text)
 
-    def __init__(self, name, buildfile):
+    def __init__(self, owner, name, buildfile):
+        self.owner = owner
         self.name = name
         self.buildfile = buildfile
 
