@@ -72,6 +72,7 @@ def is_port_free(port):
 
 def delete_image(name):
     try:
+        subprocess.call(['docker', 'stop', name])
         subprocess.call(['docker', 'rm', name])
         subprocess.call(['docker', 'rmi', name])
         return True
@@ -91,6 +92,7 @@ def run_image(name):
 
         cmd = ['docker', 'run', '-d']
         ports_used = []
+        vpn_ip = '10.9.8.1:'
         for port in ports_asked:
             i = 0
             while i < 1000:
@@ -98,7 +100,7 @@ def run_image(name):
                 print(arbitrary_port)
                 if is_port_free(arbitrary_port):
                     cmd.append('-p')
-                    cmd.append('{}:{}'.format(arbitrary_port, port))
+                    cmd.append(vpn_ip + '{}:{}'.format(arbitrary_port, port))
                     break
                 else:
                     i += 1
