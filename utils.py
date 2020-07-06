@@ -51,7 +51,7 @@ def create_image(owner, name, buildfile, files):
         cmd = ['docker', 'build', '-f', tmpfile.name, '-t', name, folder]
         print(cmd)
         subprocess.call(cmd)
-        container = Containers(owner, name, buildfile)
+        container = Containers(owner, name, buildfile, True, False)
         db.session.add(container)
         db.session.commit()
         db.session.close()
