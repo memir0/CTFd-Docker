@@ -98,8 +98,8 @@ def load(app):
     
     @containers.route('/containers/overview', methods=['POST'])
     @admins_only
-    def import_container():
-        containers = Containers.query.filter(Containers.owner==session["id"]).all()
+    def admin_overview():
+        containers = Containers.query.all()
         for c in containers:
             c.status = utils.container_status(c.name)
             c.ports = ', '.join(utils.container_ports(c.name, verbose=True))

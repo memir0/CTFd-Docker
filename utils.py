@@ -49,7 +49,6 @@ def create_image(owner, name, buildfile, files):
     # docker build -f tmpfile.name -t name
     try:
         cmd = ['docker', 'build', '-f', tmpfile.name, '-t', name, folder]
-        print(cmd)
         subprocess.call(cmd)
         container = Containers(owner, name, buildfile, True, False)
         db.session.add(container)
@@ -97,7 +96,6 @@ def run_image(name):
             i = 0
             while i < 1000:
                 arbitrary_port = 10000 + random.randint(1,50000)
-                print(arbitrary_port)
                 if is_port_free(arbitrary_port):
                     cmd.append('-p')
                     cmd.append(vpn_ip + '{}:{}'.format(arbitrary_port, port))
@@ -110,7 +108,6 @@ def run_image(name):
                 ports_used.append('{}'.format(port))
 
         cmd += ['--name', name, name]
-        print(cmd)
         subprocess.call(cmd)
         return True
     except subprocess.CalledProcessError:
@@ -139,8 +136,6 @@ def container_status(name):
     try:
         data = json.loads(subprocess.check_output(['docker', 'inspect', '--type=container', name]))
         status = data[0]["State"]["Status"]
-        print("STATUS:")
-        print(status)
         return status
     except subprocess.CalledProcessError:
         return 'missing'
@@ -157,8 +152,6 @@ def container_ports(name, verbose=False):
             final = []
             for port in ports.keys():
                 final.append("".join([ports[port][0]["HostPort"], '->', port]))
-            print("FINAL:")
-            print(final)
             return final
         else:
             ports = info[0]['Config']['ExposedPorts'].keys()
