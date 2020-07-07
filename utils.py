@@ -14,6 +14,7 @@ import random
 
 @cache.memoize()
 def can_create_container():
+    # Check if docker is installed
     try:
         subprocess.check_output(['docker', 'version'])
         return True
@@ -23,8 +24,9 @@ def can_create_container():
 
 def import_image(name):
     try:
+        # If the image exists it is added to the database as a runnable container
         info = json.loads(subprocess.check_output(['docker', 'inspect', '--type=image', name]))
-        container = Containers(owner=session["id"], name=name, buildfile=None)
+        container = Containers(owner=session["id"], name=name, buildfile=None, deleted=False)
         db.session.add(container)
         db.session.commit()
         db.session.close()
@@ -41,6 +43,7 @@ def create_image(owner, name, buildfile, files):
     tmpfile.write(bytes(buildfile, 'utf-8'))
     tmpfile.close()
 
+    # All associated files are adde to our temp foled
     for f in files:
         if f.filename.strip():
             filename = os.path.basename(f.filename)
@@ -48,12 +51,14 @@ def create_image(owner, name, buildfile, files):
     # repository name component must match "[a-z0-9](?:-*[a-z0-9])*(?:[._][a-z0-9](?:-*[a-z0-9])*)*"
     # docker build -f tmpfile.name -t name
     try:
+        # tmpfile is our docker buildfile
         cmd = ['docker', 'build', '-f', tmpfile.name, '-t', name, folder]
         subprocess.call(cmd)
-        container = Containers(owner, name, buildfile, True, False)
+        container = Containers(owner, name, buildfile, False)
         db.session.add(container)
         db.session.commit()
         db.session.close()
+        # Delete the temporary folder
         rmdir(folder)
         return True
     except subprocess.CalledProcessError:
@@ -61,6 +66,7 @@ def create_image(owner, name, buildfile, files):
 
 
 def is_port_free(port):
+    # To check that the port is free we attempt to connect to it
     s = socket.socket()
     result = s.connect_ex(('127.0.0.1', port))
     if result == 0:
@@ -71,6 +77,7 @@ def is_port_free(port):
 
 def delete_image(name):
     try:
+        # First we stop the container, then we delete the container and image
         subprocess.call(['docker', 'stop', name])
         subprocess.call(['docker', 'rm', name])
         subprocess.call(['docker', 'rmi', name])
@@ -84,17 +91,22 @@ def run_image(name):
         info = json.loads(subprocess.check_output(['docker', 'inspect', '--type=image', name]))
 
         try:
+            # We attempt to get the ports from the image
             ports_asked = info[0]['Config']['ExposedPorts'].keys()
             ports_asked = [int(re.sub('[A-Za-z/]+', '', port)) for port in ports_asked]
         except KeyError:
+            # If there are no ports we get a key error exception
             ports_asked = []
 
         cmd = ['docker', 'run', '-d']
         ports_used = []
+        # Vpn ip is appended to the ports so they are not exposed externally. Requires a ':' at the end. Leave empty to expose externally
         vpn_ip = '10.9.8.1:'
         for port in ports_asked:
             i = 0
+            # We attempt 1000 times max to prevent an infinite loop
             while i < 1000:
+                # Ports can vary from 10001 to 60000
                 arbitrary_port = 10000 + random.randint(1,50000)
                 if is_port_free(arbitrary_port):
                     cmd.append('-p')
@@ -102,11 +114,12 @@ def run_image(name):
                     break
                 else:
                     i += 1
-            if i >= 1000:
-                print("ERROR: Failed to find free port. Clean out unused containers!")
-                cmd.append('-p')
-                ports_used.append('{}'.format(port))
 
+            # Check if the while loop stopped because of too many failed attempts
+            if i >= 1000:
+                # If you see this error run the docker prune command
+                print("ERROR: Failed to find free port. Clean out unused containers!")
+                return False
         cmd += ['--name', name, name]
         subprocess.call(cmd)
         return True
@@ -134,6 +147,7 @@ def container_stop(name):
 
 def container_status(name):
     try:
+        # Gets the containers status by inspecting it
         data = json.loads(subprocess.check_output(['docker', 'inspect', '--type=container', name]))
         status = data[0]["State"]["Status"]
         return status
@@ -146,6 +160,7 @@ def container_ports(name, verbose=False):
     try:
         info = json.loads(subprocess.check_output(['docker', 'inspect', '--type=container', name]))
         if verbose:
+            # We use verbose so that we can se what ports the containers ports are forwarded to
             ports = info[0]["NetworkSettings"]["Ports"]
             if not ports:
                 return []
@@ -163,4 +178,5 @@ def container_ports(name, verbose=False):
         return []
 
 def rmdir(directory):
+    # Deletes specified folder
     shutil.rmtree(directory, ignore_errors=True)

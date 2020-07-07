@@ -1,8 +1,11 @@
-{% extends "base.html" %}
+{% extends "admin/base.html" %}
 
 {% block content %}
 <h1>Overview</h1>
 {% endblock %}
 
 {% block scripts %}
+<script type="text/javascript">
+    window.location = '/admin/containers/overview'
+</script>
 {% endblock %}

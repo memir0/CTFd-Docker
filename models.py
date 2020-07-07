@@ -9,11 +9,10 @@ class Containers(db.Model):
     running = db.Column(db.Boolean)
     deleted = db.Column(db.Boolean)
 
-    def __init__(self, owner, name, buildfile, running, deleted):
+    def __init__(self, owner, name, buildfile, deleted):
         self.owner = owner
         self.name = name
         self.buildfile = buildfile
-        self.running = running
         self.deleted = deleted
 
     def __repr__(self):

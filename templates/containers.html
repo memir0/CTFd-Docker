@@ -155,11 +155,13 @@
 		modal.find('#confirm-container-method').text(title.toLowerCase())
 		$('#confirm form').attr('action', url);
 		$('#confirm').modal('show');
+		$('#confirm-container').prop('disabled', false)
 	}
 
 	$('#confirm-container').click(function (e) {
 		e.preventDefault();
 		var id = $('#confirm input[name="id"]').val()
+		$('#confirm-container').prop('disabled', true)
 		var user_data = $('#confirm form').serializeArray()
 		$.post($('#confirm form').attr('action'), $('#confirm form').serialize(), function (data) {
 			var data = $.parseJSON(JSON.stringify(data))
