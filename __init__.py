@@ -131,15 +131,32 @@ def load(app):
         if 'page' in request.args:
             page = int(request.args.get('page'))
         
+        # Get page if page parameter is set in the url
+        running = False
+        if 'running' in request.args:
+            if request.args.get('running') == 'True':
+                running = True
+
         # The admin can view all past and present containers
         # Get amount of items
-        count = Containers.query.count()
-        
-        containers = Containers.query.paginate(page=page, per_page=containers_per_page).items
+        all_containers = Containers.query
+
+        if running:
+            for c in all_containers:
+                if utils.container_status(c.name) == 'running':
+                    c.running = True
+                all_containers = all_containers.filter_by(running=True)
+
+        count = all_containers.count()
+        containers = all_containers.paginate(page=page, per_page=containers_per_page).items
+
         for c in containers:
             c.status = utils.container_status(c.name)
             c.ports = ', '.join(utils.container_ports(c.name, verbose=True))
-        return render_template('containers.html', containers=containers, pages=math.ceil(count/containers_per_page), page=page, admin=True, base="admin/base.html")
+
+        db.session.rollback()
+
+        return render_template('containers.html', containers=containers, pages=math.ceil(count/containers_per_page), page=page, running=running, admin=True, base="admin/base.html")
     
     @containers.route('/admin/containers/<int:container_id>', methods=['GET'])
     @admins_only
@@ -148,5 +165,19 @@ def load(app):
         container = Containers.query.filter_by(id=container_id).first_or_404()
         # <pre> tags are so that the newlines are interperated
         return "<pre>" + container.buildfile + "</pre>"
+
+    @containers.route('/admin/conatainers/delete_all_deleted', methods=['POST'])
+    @admins_only
+    def delete_all():
+        # The admin can view the buildfile of all containers
+        try:
+            rows_deleted_count = Containers.query.filter_by(deleted=True).delete()
+            db.session.commit()
+        except:
+            db.session.rollback()
+            return '0'
+        
+        # <pre> tags are so that the newlines are interperated
+        return '1'
 
     app.register_blueprint(containers)
