@@ -8,6 +8,7 @@ from CTFd.utils.decorators import (
     cache
 )
 from . import utils
+import math
 
 def load(app):
     app.db.create_all()
@@ -17,15 +18,25 @@ def load(app):
     @during_ctf_time_only
     @authed_only
     def list_container():
+        containers_per_page = 10
+        # Get page if page parameter is set in the url
+        page = 1
+        if 'page' in request.args:
+            page = int(request.args.get('page'))
+        
+        # Get amount of items
+        count = Containers.query.filter(Containers.owner==session["id"]).filter(Containers.deleted == False).count()
+
         # Get all containers that the user owns and that are not deleted by the user
-        containers = Containers.query.filter(Containers.owner==session["id"]).filter(Containers.deleted == False).all()
+        containers = Containers.query.filter(Containers.owner==session["id"]).filter(Containers.deleted == False).paginate(page=page, per_page=containers_per_page).items
+
         for c in containers:
             # We get the container stauts by using the docker inspect command
             c.status = utils.container_status(c.name)
             # Ports are also from inspect
             c.ports = ', '.join(utils.container_ports(c.name, verbose=True))
         # We render the container page with all the users containers
-        return render_template('containers.html', containers=containers)
+        return render_template('containers.html', containers=containers, pages=math.ceil(count/containers_per_page), page=page)
 
 
     @containers.route('/containers/<int:container_id>/stop', methods=['POST'])
@@ -114,12 +125,21 @@ def load(app):
     @containers.route('/admin/containers/overview', methods=['GET'])
     @admins_only
     def admin_overview():
+        containers_per_page = 10
+        # Get page if page parameter is set in the url
+        page = 1
+        if 'page' in request.args:
+            page = int(request.args.get('page'))
+        
         # The admin can view all past and present containers
-        containers = Containers.query.all()
+        # Get amount of items
+        count = Containers.query.count()
+        
+        containers = Containers.query.paginate(page=page, per_page=containers_per_page).items
         for c in containers:
             c.status = utils.container_status(c.name)
             c.ports = ', '.join(utils.container_ports(c.name, verbose=True))
-        return render_template('overview.html', containers=containers)
+        return render_template('containers.html', containers=containers, pages=math.ceil(count/containers_per_page), page=page, admin=True)
     
     @containers.route('/admin/containers/<int:container_id>', methods=['GET'])
     @admins_only
