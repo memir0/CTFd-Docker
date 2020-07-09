@@ -36,7 +36,7 @@ def load(app):
             # Ports are also from inspect
             c.ports = ', '.join(utils.container_ports(c.name, verbose=True))
         # We render the container page with all the users containers
-        return render_template('containers.html', containers=containers, pages=math.ceil(count/containers_per_page), page=page)
+        return render_template('containers.html', containers=containers, pages=math.ceil(count/containers_per_page), page=page, admin=False, base="base.html")
 
 
     @containers.route('/containers/<int:container_id>/stop', methods=['POST'])
@@ -139,7 +139,7 @@ def load(app):
         for c in containers:
             c.status = utils.container_status(c.name)
             c.ports = ', '.join(utils.container_ports(c.name, verbose=True))
-        return render_template('containers.html', containers=containers, pages=math.ceil(count/containers_per_page), page=page, admin=True)
+        return render_template('containers.html', containers=containers, pages=math.ceil(count/containers_per_page), page=page, admin=True, base="admin/base.html")
     
     @containers.route('/admin/containers/<int:container_id>', methods=['GET'])
     @admins_only
