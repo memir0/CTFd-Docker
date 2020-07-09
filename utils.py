@@ -4,6 +4,7 @@ from CTFd.models import db
 from .models import Containers
 
 import json
+import os
 import subprocess
 import socket
 import tempfile
