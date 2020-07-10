@@ -98,7 +98,7 @@ def load(app):
         name = session["name"] + "-" + request.form.get('name')
         # Docker requires lowercase lettering
         name = name.lower()
-
+        # If another container has the same name, add a random string to it
         if utils.container_already_exists(name):
             name += '_' + utils.randomString(8)
         # Check that the name is valid
@@ -143,21 +143,20 @@ def load(app):
         # The admin can view all past and present containers
         # Get amount of items
         all_containers = Containers.query
-
+        # Check if the admin wants to display only running containers
         if running:
             for c in all_containers:
                 if utils.container_status(c.name) == 'running':
                     c.running = True
-                all_containers = all_containers.filter_by(running=True)
+            all_containers = all_containers.filter_by(running=True)
 
+        # Get amount of containers and divide them into pages
         count = all_containers.count()
         containers = all_containers.paginate(page=page, per_page=containers_per_page).items
-
+        # Add info about the containers from docker inspect
         for c in containers:
             c.status = utils.container_status(c.name)
             c.ports = ', '.join(utils.container_ports(c.name, verbose=True))
-
-        db.session.rollback()
 
         return render_template('containers.html', containers=containers, pages=math.ceil(count/containers_per_page), page=page, running=running, admin=True, base="admin/base.html")
     
@@ -176,11 +175,9 @@ def load(app):
         try:
             rows_deleted_count = Containers.query.filter_by(deleted=True).delete()
             db.session.commit()
+            return '1'
         except:
             db.session.rollback()
             return '0'
-        
-        # <pre> tags are so that the newlines are interperated
-        return '1'
 
     app.register_blueprint(containers)
