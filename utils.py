@@ -11,6 +11,7 @@ import tempfile
 import shutil
 import re
 import random
+import string
 
 
 @cache.memoize()
@@ -177,6 +178,18 @@ def container_ports(name, verbose=False):
             return ports
     except subprocess.CalledProcessError:
         return []
+
+def container_already_exists(name):
+    try:
+        subprocess.check_output(['docker', 'inspect', '--type=container', name])
+        return True
+    except subprocess.CalledProcessError:
+        # If the inspect fails we assume that the container does not exist
+        return False
+
+def randomString(stringLength=28):
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(stringLength))
 
 def rmdir(directory):
     # Deletes specified folder

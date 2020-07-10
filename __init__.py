@@ -98,6 +98,9 @@ def load(app):
         name = session["name"] + "-" + request.form.get('name')
         # Docker requires lowercase lettering
         name = name.lower()
+
+        if utils.container_already_exists(name):
+            name += '_' + utils.randomString(8)
         # Check that the name is valid
         if not set(name) <= set('abcdefghijklmnopqrstuvwxyz0123456789-_'):
             return redirect(url_for('containers.list_container'))
