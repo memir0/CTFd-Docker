@@ -166,7 +166,7 @@ def load(app):
         # The admin can view the buildfile of all containers
         container = Containers.query.filter_by(id=container_id).first_or_404()
         # <pre> tags are so that the newlines are interperated
-        return "<pre>" + container.buildfile + "</pre>"
+        return render_template('container_buildfile.html', container_name=container.name, buildfile=container.buildfile)
 
     @containers.route('/admin/conatainers/delete_all_deleted', methods=['POST'])
     @admins_only
